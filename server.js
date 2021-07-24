@@ -30,7 +30,7 @@ app.post('/users', (req,res) => {
         if(results.length == 0) {
             users.insertOne(req.body)
             .then(result => {
-                res.status(200).send({"id" : result.insertedId});
+                res.status(201).send({"id" : result.insertedId});
             })
             .catch(err => {
                 console.error(err);
@@ -113,7 +113,7 @@ app.patch('/users/:id', (req,res) => {
 app.post('/tabs', (req,res) => {
     tabs.insertOne(req.body)
     .then(result => {
-        res.status(200).send({"id" : result.insertedId});
+        res.status(201).send({"id" : result.insertedId});
     })
     .catch(err => {
         console.error(err);
