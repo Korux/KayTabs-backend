@@ -124,9 +124,29 @@ app.post('/tabs', (req,res) => {
 app.get('/tabs', (req,res) => {
 
     let search = req.query.search;
+    let star = req.query.star;
+
+    if(star != null){
+        if(typeof(star === 'string')){
+            star = [ObjectId(star)];
+        }else{
+            star = star.map(val => ObjectId(val));
+        }
+    }
 
     if(search != null){
         tabs.find({ $or: [ { title: {$regex : search} }, { ownername: {$regex : search} } ] }).toArray()
+        .then(results => {
+            res.status(200).send(results);
+        })
+        .catch(err => {
+            console.error(err);
+            res.status(400).send({"Error" : "Unknown Error, try again later"});
+        });
+
+    }
+    else if(star != null){
+        tabs.find({ _id : { $in : star } }).toArray()
         .then(results => {
             res.status(200).send(results);
         })
@@ -163,10 +183,6 @@ app.get('/tabs/:id', (req,res) => {
     }
 });
 
-app.patch('/tabs/:id', (req,res) => {
-
-});
-
 app.delete('/tabs/:id', (req,res) => {
     
 });
@@ -198,6 +214,52 @@ app.put('/users/:userid/tabs/:tabid', (req,res) => {
                 }else if(req.body.type === "tab"){
                     let newTab = user.tabs;
                     newTab.push(tab._id);
+                    users.updateOne({_id : ObjectId(req.params.userid)}, {$set:{"tabs" : newTab}})
+                    .then(() => {
+                        res.status(200).send(user);
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        res.status(400).send({"Error" : "Unknown Error, try again later"});
+                    });
+                }else{
+                    res.status(400).send({"Error" : "Must specify how the tab should be linked"});
+                }
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            res.status(400).send({"Error" : "Unknown Error, try again later"});
+        });
+    }
+});
+
+app.delete('/users/:userid/tabs/:tabid', (req,res) => {
+
+    if(!ObjectId.isValid(req.params.userid) || !ObjectId.isValid(req.params.tabid)){
+        res.status(404).send({"Error" : "Tab or User ID does not exist"});
+    }else{
+        let userQuery = users.findOne(ObjectId(req.params.userid));
+        let tabQuery = tabs.findOne(ObjectId(req.params.tabid));
+
+        Promise.all([userQuery, tabQuery])
+        .then(([user,tab]) => {
+            if(!user || !tab) res.status(404).send({"Error" : "Tab or User ID does not exist"});
+            else{
+                if(req.body.type === "star"){
+                    let newStar = user.starred;
+                    newStar = newStar.filter(val => !val.equals(tab._id));
+                    users.updateOne({_id : ObjectId(req.params.userid)}, {$set:{"starred" : newStar}})
+                    .then(() => {
+                        res.status(200).send(user);
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        res.status(400).send({"Error" : "Unknown Error, try again later"});
+                    });
+                }else if(req.body.type === "tab"){
+                    let newTab = user.tabs;
+                    newTab = newTab.filter(val => val !== tab._id);
                     users.updateOne({_id : ObjectId(req.params.userid)}, {$set:{"tabs" : newTab}})
                     .then(() => {
                         res.status(200).send(user);
