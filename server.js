@@ -88,6 +88,32 @@ app.get('/users/:id', (req,res) => {
     }
 });
 
+app.get('/users/:id/:tabtype', (req,res) => {
+    if(req.params.tabtype !== 'tabs' && req.params.tabtype !== 'starred') res.status(400).send({"Error" : "Please specify the tab type (tabs or starred)"});
+    if(!ObjectId.isValid(req.params.id)){
+        res.status(404).send({"Error" : "This ID does not exist"});
+    }else{
+        users.findOne(ObjectId(req.params.id))
+        .then(results => {
+            if(!results) res.status(404).send({"Error" : "This ID does not exist"});
+            else{
+                let tablist = req.params.tabtype === "tabs" ? results.tabs : results.starred;
+                tabs.find({ _id : { $in : tablist } }).toArray()
+                .then(results => {
+                    res.status(200).send(results);
+                })
+                .catch(err => {
+                    console.error(err);
+                    res.status(400).send({"Error" : "Unknown Error, try again later"});
+                });
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            res.status(400).send({"Error" : "Unknown Error, try again later"});
+        });
+    }
+});
 
 //incomplete
 app.patch('/users/:id', (req,res) => {
@@ -124,15 +150,6 @@ app.post('/tabs', (req,res) => {
 app.get('/tabs', (req,res) => {
 
     let search = req.query.search;
-    let star = req.query.star;
-
-    if(star != null){
-        if(typeof(star === 'string')){
-            star = [ObjectId(star)];
-        }else{
-            star = star.map(val => ObjectId(val));
-        }
-    }
 
     if(search != null){
         tabs.find({ $or: [ { title: {$regex : search} }, { ownername: {$regex : search} } ] }).toArray()
@@ -145,17 +162,7 @@ app.get('/tabs', (req,res) => {
         });
 
     }
-    else if(star != null){
-        tabs.find({ _id : { $in : star } }).toArray()
-        .then(results => {
-            res.status(200).send(results);
-        })
-        .catch(err => {
-            console.error(err);
-            res.status(400).send({"Error" : "Unknown Error, try again later"});
-        });
-
-    }else{
+    else{
         tabs.find().toArray()
         .then(results => {
             res.status(200).send(results);
