@@ -191,7 +191,22 @@ app.get('/tabs/:id', (req,res) => {
 });
 
 app.delete('/tabs/:id', (req,res) => {
-    
+    if(!ObjectId.isValid(req.params.id)){
+        res.status(404).send({"Error" : "This tab does not exist"});
+    }else{
+        tabs.findOne(ObjectId(req.params.id))
+        .then(results => {
+            if(!results) res.status(404).send({"Error" : "This tab does not exist"});
+            else {
+                tabs.deleteOne( {_id : ObjectId(req.params.id)} 
+                .then(res.sendStatus(204)));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            res.status(400).send({"Error" : "Unknown Error, try again later"});
+        });
+    }
 });
 
 
