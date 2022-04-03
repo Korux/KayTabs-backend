@@ -115,24 +115,33 @@ app.get('/users/:id/:tabtype', (req,res) => {
     }
 });
 
-//incomplete
 app.patch('/users/:id', (req,res) => {
-
-    if(!ObjectId.isValid(req.params.id)){
-        res.status(404).send({"Error" : "This ID does not exist"});
+    if(!req.body.name || !req.body.desc){
+        res.status(400).send({"Error" : "Must provide updated user info in body"});
     }else{
-        users.find(ObjectId(req.params.id)).toArray()
-        .then(results => {
-            if(results.length == 0) res.status(404).send({"Error" : "This ID does not exist"});
-            else{
-                // do patch here
-                res.status(200).send(results);
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            res.status(400).send({"Error" : "Unknown Error, try again later"});
-        });
+        if(!ObjectId.isValid(req.params.id)){
+            res.status(404).send({"Error" : "This ID does not exist"});
+        }else{
+            users.find(ObjectId(req.params.id)).toArray()
+            .then(results => {
+                if(results.length == 0) res.status(404).send({"Error" : "This ID does not exist"});
+                else{
+                    users.updateOne(
+                        {_id : new ObjectId(req.params.id)},
+                        {$set : {name:req.body.name, description : req.body.desc}}
+                    ).then((updatedUser) => {
+                        res.status(200).send(updatedUser);
+                    })
+                    .catch((err) => {
+                        res.status(400).send({"Error" : "Unknown Error, try again later"});
+                    });
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                res.status(400).send({"Error" : "Unknown Error, try again later"});
+            });
+        }
     }
 });
 
@@ -198,8 +207,8 @@ app.delete('/tabs/:id', (req,res) => {
         .then(results => {
             if(!results) res.status(404).send({"Error" : "This tab does not exist"});
             else {
-                tabs.deleteOne( {_id : ObjectId(req.params.id)} 
-                .then(res.sendStatus(204)));
+                tabs.deleteOne( {_id : ObjectId(req.params.id)} )
+                .then(res.sendStatus(204));
             }
         })
         .catch(err => {
@@ -281,7 +290,7 @@ app.delete('/users/:userid/tabs/:tabid', (req,res) => {
                     });
                 }else if(req.body.type === "tab"){
                     let newTab = user.tabs;
-                    newTab = newTab.filter(val => val !== tab._id);
+                    newTab = newTab.filter(val => !val.equals(tab._id));
                     users.updateOne({_id : ObjectId(req.params.userid)}, {$set:{"tabs" : newTab}})
                     .then(() => {
                         res.status(200).send(user);
